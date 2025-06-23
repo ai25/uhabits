@@ -24,10 +24,12 @@ import android.content.res.ColorStateList
 import android.content.res.Resources
 import android.os.Bundle
 import android.text.Html
+import android.text.InputType
 import android.text.Spanned
 import android.text.format.DateFormat
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -59,12 +61,13 @@ import org.isoron.uhabits.utils.formatTime
 import org.isoron.uhabits.utils.toFormattedString
 
 fun formatFrequency(freqNum: Int, freqDen: Int, resources: Resources) = when {
-    freqNum == 1 && (freqDen == 30 || freqDen == 31) -> resources.getString(R.string.every_month)
-    freqDen == 30 || freqDen == 31 -> resources.getString(R.string.x_times_per_month, freqNum)
+    freqNum == 1 && freqDen % 30 == 0 -> resources.getString(R.string.every_x_months, freqDen / 30)
+    freqNum == 1 && freqDen % 7 == 0 -> resources.getString(R.string.every_x_weeks, freqDen / 7)
     freqNum == 1 && freqDen == 1 -> resources.getString(R.string.every_day)
     freqNum == 1 && freqDen == 7 -> resources.getString(R.string.every_week)
     freqNum == 1 && freqDen > 1 -> resources.getString(R.string.every_x_days, freqDen)
-    freqDen == 7 -> resources.getString(R.string.x_times_per_week, freqNum)
+    freqDen % 7 == 0 -> resources.getString(R.string.x_times_per_week, freqNum * 7 / freqDen)
+    freqDen % 30 == 0 -> resources.getString(R.string.x_times_per_month, freqNum * 30 / freqDen)
     else -> resources.getString(R.string.x_times_per_y_days, freqNum, freqDen)
 }
 
@@ -197,13 +200,31 @@ class EditHabitActivity : AppCompatActivity() {
             arrayAdapter.add(getString(R.string.every_day))
             arrayAdapter.add(getString(R.string.every_week))
             arrayAdapter.add(getString(R.string.every_month))
+            arrayAdapter.add(getString(R.string.custom_every_x_days))
+            arrayAdapter.add(getString(R.string.custom_every_x_weeks))
+            arrayAdapter.add(getString(R.string.custom_every_x_months))
+
             builder.setAdapter(arrayAdapter) { dialog, which ->
-                freqDen = when (which) {
-                    1 -> 7
-                    2 -> 30
-                    else -> 1
+                when (which) {
+                    0 -> {
+                        freqNum = 1
+                        freqDen = 1
+                        populateFrequency()
+                    }
+                    1 -> {
+                        freqNum = 1
+                        freqDen = 7
+                        populateFrequency()
+                    }
+                    2 -> {
+                        freqNum = 1
+                        freqDen = 30
+                        populateFrequency()
+                    }
+                    3 -> showCustomFrequencyDialog(1)
+                    4 -> showCustomFrequencyDialog(7)
+                    5 -> showCustomFrequencyDialog(30)
                 }
-                populateFrequency()
                 dialog.dismiss()
             }
             builder.show()
@@ -335,12 +356,7 @@ class EditHabitActivity : AppCompatActivity() {
     @SuppressLint("StringFormatMatches")
     private fun populateFrequency() {
         binding.booleanFrequencyPicker.text = formatFrequency(freqNum, freqDen, resources)
-        binding.numericalFrequencyPicker.text = when (freqDen) {
-            1 -> getString(R.string.every_day)
-            7 -> getString(R.string.every_week)
-            30 -> getString(R.string.every_month)
-            else -> "$freqNum/$freqDen"
-        }
+        binding.numericalFrequencyPicker.text = formatFrequency(freqNum, freqDen, resources)
     }
 
     private fun populateTargetType() {
@@ -357,6 +373,31 @@ class EditHabitActivity : AppCompatActivity() {
             window.statusBarColor = androidColor
             binding.toolbar.setBackgroundColor(androidColor)
         }
+    }
+
+    private fun showCustomFrequencyDialog(unitDays: Int) {
+        val input = EditText(this)
+        input.inputType = InputType.TYPE_CLASS_NUMBER
+
+        val title = when (unitDays) {
+            1 -> getString(R.string.every_x_days, 1).replace("1", "n")
+            7 -> getString(R.string.every_x_weeks, 1).replace("1", "n")
+            else -> getString(R.string.every_x_months, 1).replace("1", "n")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(input)
+            .setPositiveButton(R.string.save) { _, _ ->
+                val n = input.text.toString().toIntOrNull()
+                if (n != null && n > 0) {
+                    freqNum = 1
+                    freqDen = unitDays * n
+                    populateFrequency()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun getFormattedValidationError(@StringRes resId: Int): Spanned {
