@@ -156,6 +156,10 @@
     <string name="yes_or_no">Yes or No</string>
     <string name="every_x_days">Every %d days</string>
     <string name="every_x_weeks">Every %d weeks</string>
+    <string name="every_x_months">Every %d months</string>
+    <string name="custom_every_x_days">Every (n) days...</string>
+    <string name="custom_every_x_weeks">Every (n) weeks...</string>
+    <string name="custom_every_x_months">Every (n) months...</string>
     <string name="score">Score</string>
     <string name="reminder_sound">Reminder sound</string>
     <string name="none">None</string>
